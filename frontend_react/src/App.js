@@ -1,48 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
+import React, { useEffect, useMemo, useState } from 'react';
 import './App.css';
+import { ChatProvider, useChat } from './state/ChatContext';
+import Sidebar from './components/Sidebar';
+import TopNav from './components/TopNav';
+import ChatPanel from './components/ChatPanel';
+import Composer from './components/Composer';
+import NewSessionModal from './components/modals/NewSessionModal';
+import FileUploadModal from './components/modals/FileUploadModal';
+import SettingsModal from './components/modals/SettingsModal';
+
+/**
+ * Inner app uses the chat context. Wrapped by ChatProvider in App().
+ */
+function AppShell() {
+  const { error } = useChat();
+  const { clearError } = useChat().actions;
+
+  const [newSessionOpen, setNewSessionOpen] = useState(false);
+  const [fileUploadOpen, setFileUploadOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Clear errors when opening modals (keeps UI calm)
+  useEffect(() => {
+    if (newSessionOpen || fileUploadOpen || settingsOpen) clearError();
+  }, [newSessionOpen, fileUploadOpen, settingsOpen, clearError]);
+
+  const toastText = useMemo(() => {
+    if (!error) return '';
+    return error;
+  }, [error]);
+
+  return (
+    <>
+      <div className="app-shell">
+        <Sidebar onOpenNewSession={() => setNewSessionOpen(true)} />
+
+        <section className="main" aria-label="Chat">
+          <TopNav onOpenSettings={() => setSettingsOpen(true)} />
+          <ChatPanel />
+          <Composer onOpenAttach={() => setFileUploadOpen(true)} onOpenSettings={() => setSettingsOpen(true)} />
+        </section>
+      </div>
+
+      <NewSessionModal isOpen={newSessionOpen} onClose={() => setNewSessionOpen(false)} />
+      <FileUploadModal isOpen={fileUploadOpen} onClose={() => setFileUploadOpen(false)} />
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {toastText ? (
+        <div className="toast" role="status" aria-live="polite">
+          {toastText}
+        </div>
+      ) : null}
+    </>
+  );
+}
 
 // PUBLIC_INTERFACE
 function App() {
-  const [theme, setTheme] = useState('light');
-
-  // Effect to apply theme to document element
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
-
+  /** Root application component for the Ocean Professional chat UI. */
   return (
-    <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <ChatProvider>
+      <AppShell />
+    </ChatProvider>
   );
 }
 
