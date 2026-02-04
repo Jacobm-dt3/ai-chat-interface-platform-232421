@@ -3,7 +3,7 @@
  * Values are sourced from the .env file via CRA's process.env.* injection.
  */
 
-/** @typedef {{ apiBase: string, backendUrl: string, frontendUrl: string, wsUrl: string, nodeEnv: string, featureFlags: string, experimentsEnabled: string }} EnvConfig */
+/** @typedef {{ apiBase: string, backendUrl: string, frontendUrl: string, wsUrl: string, nodeEnv: string, featureFlags: string, experimentsEnabled: string, authToken: string, tenantId: string }} EnvConfig */
 
 /**
  * PUBLIC_INTERFACE
@@ -19,5 +19,19 @@ export function getEnvConfig() {
   const featureFlags = process.env.REACT_APP_FEATURE_FLAGS || '';
   const experimentsEnabled = process.env.REACT_APP_EXPERIMENTS_ENABLED || '';
 
-  return { apiBase, backendUrl, frontendUrl, wsUrl, nodeEnv, featureFlags, experimentsEnabled };
+  // Optional dev helpers (do not rely on these for production auth)
+  const authToken = process.env.REACT_APP_AUTH_TOKEN || '';
+  const tenantId = process.env.REACT_APP_TENANT_ID || '';
+
+  return {
+    apiBase,
+    backendUrl,
+    frontendUrl,
+    wsUrl,
+    nodeEnv,
+    featureFlags,
+    experimentsEnabled,
+    authToken,
+    tenantId,
+  };
 }

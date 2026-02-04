@@ -123,23 +123,29 @@ export function ChatProvider({ children }) {
       abortRef.current = ctrl;
 
       try {
-        await sendMessageStreaming(activeSessionId || sessions?.[0]?.id, content, {
+        const result = await sendMessageStreaming(activeSessionId || sessions?.[0]?.id, content, {
           signal: ctrl.signal,
           onToken: (chunk) => {
             setStreamingDraft((prev) => prev + chunk);
           },
         });
 
-        // Finalize assistant message from streamingDraft
+        // Prefer backend-provided final assistant message when available (SSE message_done or JSON fallback).
+        const assistant = result?.assistantMessage;
+        const assistantContent = assistant?.content ?? '';
+
         setMessages((prev) => [
           ...prev,
           {
-            id: `asst_${Date.now()}`,
+            id: assistant?.id || `asst_${Date.now()}`,
             role: 'assistant',
-            content: streamingDraft ? streamingDraft : '',
-            createdAt: Date.now(),
+            content: assistantContent || '',
+            createdAt: assistant?.createdAt || Date.now(),
           },
         ]);
+
+        // Clear draft once finalized so the "append-on-stream-end" effect won't duplicate messages.
+        setStreamingDraft('');
       } catch (e) {
         const msg = e?.message || 'Failed to send message';
         setError(msg);
@@ -154,22 +160,7 @@ export function ChatProvider({ children }) {
     [activeSessionId, sessions, startNewSession]
   );
 
-  // Ensure finalize uses the latest streaming draft: when streaming ends and draft exists,
-  // append assistant message only once if last message isn't assistant.
-  useEffect(() => {
-    if (isStreaming) return;
-    if (!streamingDraft) return;
 
-    setMessages((prev) => {
-      const last = prev[prev.length - 1];
-      if (last?.role === 'assistant' && last?.content === streamingDraft) return prev;
-      return [
-        ...prev,
-        { id: `asst_${Date.now()}`, role: 'assistant', content: streamingDraft, createdAt: Date.now() },
-      ];
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStreaming]);
 
   const attachFile = useCallback(
     async (file) => {
